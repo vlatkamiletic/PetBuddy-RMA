@@ -6,8 +6,6 @@ import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +19,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+
 
 @Composable
 fun PetDetailsScreen(
@@ -46,6 +48,12 @@ fun PetDetailsScreen(
 
     // var koja se koristi za brisanje termina
     var appointmentToDelete by remember { mutableStateOf<Appointment?>(null) }
+
+    // var koje se koriste za uredivanje termina
+    var appointmentToEdit by remember { mutableStateOf<Appointment?>(null) }
+    var editType by remember { mutableStateOf("") }
+    var editNotes by remember { mutableStateOf("") }
+    var editDateTime by remember { mutableStateOf<Date?>(null) }
 
 
     fun loadAppointments() {
@@ -114,12 +122,29 @@ fun PetDetailsScreen(
                                 Text("Type: ${appointment.type}", style = MaterialTheme.typography.titleMedium)
                                 Text("Date: ${dateFormatter.format(appointment.date.toDate())}")
 
-                                IconButton(onClick = { appointmentToDelete = appointment }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete Appointment")
-                                }
-
                                 if (appointment.notes.isNotEmpty()) {
                                     Text("Notes: ${appointment.notes}")
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    IconButton(onClick = {
+                                        appointmentToEdit = appointment
+                                        editType = appointment.type
+                                        editNotes = appointment.notes
+                                        editDateTime = appointment.date.toDate()
+                                    }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit Appointment")
+                                    }
+                                    IconButton(onClick = {
+                                        appointmentToDelete = appointment
+                                    }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete Appointment")
+                                    }
                                 }
                             }
                         }
@@ -242,6 +267,90 @@ fun PetDetailsScreen(
                 },
                 title = { Text("Delete Appointment") },
                 text = { Text("Are you sure you want to delete this appointment?") }
+            )
+        }
+
+        //uredivanje termina
+        appointmentToEdit?.let { appointment ->
+            AlertDialog(
+                onDismissRequest = { appointmentToEdit = null },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val updated = mapOf(
+                            "type" to editType,
+                            "notes" to editNotes,
+                            "date" to Timestamp(editDateTime ?: Date())
+                        )
+                        db.collection("appointments").document(appointment.id)
+                            .update(updated)
+                            .addOnSuccessListener {
+                                loadAppointments()
+                                appointmentToEdit = null
+                            }
+                    }) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { appointmentToEdit = null }) {
+                        Text("Cancel")
+                    }
+                },
+                title = { Text("Edit Appointment") },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = editType,
+                            onValueChange = { editType = it },
+                            label = { Text("Type") },
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Button(onClick = {
+                            DatePickerDialog(
+                                context,
+                                { _, year, month, day ->
+                                    calendar.set(Calendar.YEAR, year)
+                                    calendar.set(Calendar.MONTH, month)
+                                    calendar.set(Calendar.DAY_OF_MONTH, day)
+
+                                    TimePickerDialog(
+                                        context,
+                                        { _, hour, minute ->
+                                            calendar.set(Calendar.HOUR_OF_DAY, hour)
+                                            calendar.set(Calendar.MINUTE, minute)
+                                            editDateTime = calendar.time
+                                        },
+                                        calendar.get(Calendar.HOUR_OF_DAY),
+                                        calendar.get(Calendar.MINUTE),
+                                        true
+                                    ).show()
+                                },
+                                calendar.get(Calendar.YEAR),
+                                calendar.get(Calendar.MONTH),
+                                calendar.get(Calendar.DAY_OF_MONTH)
+                            ).show()
+                        }) {
+                            Text("Pick New Date & Time")
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        editDateTime?.let {
+                            Text("Selected: ${dateFormatter.format(it)}")
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = editNotes,
+                            onValueChange = { editNotes = it },
+                            label = { Text("Notes") },
+                            maxLines = 3
+                        )
+                    }
+                }
             )
         }
     }
