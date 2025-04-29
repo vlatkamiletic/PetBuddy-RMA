@@ -55,6 +55,8 @@ fun PetDetailsScreen(
     var editNotes by remember { mutableStateOf("") }
     var editDateTime by remember { mutableStateOf<Date?>(null) }
 
+    var sortOption by remember { mutableStateOf("Najranije prvo") }
+
 
     fun loadAppointments() {
         isLoading = true
@@ -72,6 +74,12 @@ fun PetDetailsScreen(
                         date = doc.getTimestamp("date") ?: Timestamp.now(),
                         notes = doc.getString("notes") ?: ""
                     )
+                }.let { list ->
+                    if (sortOption == "Najranije prvo") {
+                        list.sortedBy { it.date.toDate() }
+                    } else {
+                        list.sortedByDescending { it.date.toDate() }
+                    }
                 }
                 isLoading = false
             }
@@ -99,51 +107,97 @@ fun PetDetailsScreen(
             }
         }
     ) { innerPadding ->
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .fillMaxSize()
+        ) {
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Sortiraj po:", style = MaterialTheme.typography.labelLarge)
+
+                var expanded by remember { mutableStateOf(false) }
+
+                Box {
+                    Button(onClick = { expanded = true }) {
+                        Text(sortOption)
+                    }
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Najranije prvo") },
+                            onClick = {
+                                sortOption = "Najranije prvo"
+                                loadAppointments()
+                                expanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Najkasnije prvo") },
+                            onClick = {
+                                sortOption = "Najkasnije prvo"
+                                loadAppointments()
+                                expanded = false
+                            }
+                        )
+                    }
+                }
             }
-        } else {
-            if (appointments.isEmpty()) {
+
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No appointments found.")
+                    CircularProgressIndicator()
                 }
             } else {
-                LazyColumn(modifier = Modifier
-                    .padding(innerPadding)
-                    .padding(16.dp)) {
-                    items(appointments) { appointment ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Type: ${appointment.type}", style = MaterialTheme.typography.titleMedium)
-                                Text("Date: ${dateFormatter.format(appointment.date.toDate())}")
-
-                                if (appointment.notes.isNotEmpty()) {
-                                    Text("Notes: ${appointment.notes}")
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    IconButton(onClick = {
-                                        appointmentToEdit = appointment
-                                        editType = appointment.type
-                                        editNotes = appointment.notes
-                                        editDateTime = appointment.date.toDate()
-                                    }) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Edit Appointment")
+                if (appointments.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No appointments found.")
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(appointments) { appointment ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("Type: ${appointment.type}", style = MaterialTheme.typography.titleMedium)
+                                    Text("Date: ${dateFormatter.format(appointment.date.toDate())}")
+                                    if (appointment.notes.isNotEmpty()) {
+                                        Text("Notes: ${appointment.notes}")
                                     }
-                                    IconButton(onClick = {
-                                        appointmentToDelete = appointment
-                                    }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete Appointment")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        IconButton(onClick = {
+                                            appointmentToEdit = appointment
+                                            editType = appointment.type
+                                            editNotes = appointment.notes
+                                            editDateTime = appointment.date.toDate()
+                                        }) {
+                                            Icon(Icons.Default.Edit, contentDescription = "Edit Appointment")
+                                        }
+                                        IconButton(onClick = {
+                                            appointmentToDelete = appointment
+                                        }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete Appointment")
+                                        }
                                     }
                                 }
                             }
