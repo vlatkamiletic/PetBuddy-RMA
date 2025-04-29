@@ -6,6 +6,8 @@ import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +43,10 @@ fun PetDetailsScreen(
     var newNotes by remember { mutableStateOf("") }
     val calendar = remember { Calendar.getInstance() }
     var selectedDateTime by remember { mutableStateOf<Date?>(null) }
+
+    // var koja se koristi za brisanje termina
+    var appointmentToDelete by remember { mutableStateOf<Appointment?>(null) }
+
 
     fun loadAppointments() {
         isLoading = true
@@ -107,6 +113,11 @@ fun PetDetailsScreen(
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text("Type: ${appointment.type}", style = MaterialTheme.typography.titleMedium)
                                 Text("Date: ${dateFormatter.format(appointment.date.toDate())}")
+
+                                IconButton(onClick = { appointmentToDelete = appointment }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete Appointment")
+                                }
+
                                 if (appointment.notes.isNotEmpty()) {
                                     Text("Notes: ${appointment.notes}")
                                 }
@@ -206,6 +217,31 @@ fun PetDetailsScreen(
                         )
                     }
                 }
+            )
+        }
+        // Brisanje termina
+        appointmentToDelete?.let { appointment ->
+            AlertDialog(
+                onDismissRequest = { appointmentToDelete = null },
+                confirmButton = {
+                    TextButton(onClick = {
+                        db.collection("appointments").document(appointment.id)
+                            .delete()
+                            .addOnSuccessListener {
+                                appointments = appointments.filterNot { it.id == appointment.id }
+                                appointmentToDelete = null
+                            }
+                    }) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { appointmentToDelete = null }) {
+                        Text("Cancel")
+                    }
+                },
+                title = { Text("Delete Appointment") },
+                text = { Text("Are you sure you want to delete this appointment?") }
             )
         }
     }
