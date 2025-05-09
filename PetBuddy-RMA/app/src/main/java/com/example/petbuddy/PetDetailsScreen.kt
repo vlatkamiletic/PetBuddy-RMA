@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -23,22 +25,18 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.material.icons.filled.ArrowDropDown
 
-
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PetDetailsScreen(navController: NavController, petId: String, petName: String) {
     val db = FirebaseFirestore.getInstance()
     val userId = FirebaseAuth.getInstance().currentUser?.uid
-    val context = LocalContext.current
-    val calendar = remember { Calendar.getInstance() }
-    val options = listOf("Vaccination", "Check-up", "Grooming", "Training", "Other")
     val dateFormatter = remember { SimpleDateFormat("dd.MM.yyyy. HH:mm", Locale.getDefault()) }
 
     var appointments by remember { mutableStateOf(listOf<Appointment>()) }
     var isLoading by remember { mutableStateOf(true) }
     var sortOption by remember { mutableStateOf("Najranije prvo") }
+    var searchQuery by remember { mutableStateOf("") }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -58,6 +56,7 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
                         userId = doc.getString("userId") ?: "",
                         type = doc.getString("type") ?: "",
                         date = doc.getTimestamp("date") ?: Timestamp.now(),
+                        endDate = doc.getTimestamp("endDate"),
                         notes = doc.getString("notes") ?: ""
                     )
                 }.let { list ->
@@ -78,10 +77,15 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
 
     Scaffold(
         topBar = {
-            Text(
-                text = "Appointments for $petName",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp)
+            TopAppBar(
+                title = {
+                    Text("Appointments for $petName")
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -120,47 +124,65 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Pretraži termine") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            )
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (appointments.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No appointments found.")
-                }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(appointments) { appointment ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Type: ${appointment.type}", style = MaterialTheme.typography.titleMedium)
-                                Text("Date: ${dateFormatter.format(appointment.date.toDate())}")
-                                if (appointment.notes.isNotEmpty()) {
-                                    Text("Notes: ${appointment.notes}")
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    IconButton(onClick = {
-                                        selectedAppointment = appointment
-                                        showEditDialog = true
-                                    }) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                val filteredAppointments = appointments.filter {
+                    it.type.contains(searchQuery, ignoreCase = true) ||
+                            it.notes.contains(searchQuery, ignoreCase = true) ||
+                            dateFormatter.format(it.date.toDate()).contains(searchQuery)
+                }
+
+                if (filteredAppointments.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No appointments found.")
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(filteredAppointments) { appointment ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("Type: ${appointment.type}", style = MaterialTheme.typography.titleMedium)
+                                    val dateText = appointment.endDate?.let {
+                                        "${dateFormatter.format(appointment.date.toDate())} – ${dateFormatter.format(it.toDate())}"
+                                    } ?: dateFormatter.format(appointment.date.toDate())
+                                    Text("Date: $dateText")
+                                    if (appointment.notes.isNotEmpty()) {
+                                        Text("Notes: ${appointment.notes}")
                                     }
-                                    IconButton(onClick = {
-                                        db.collection("appointments").document(appointment.id).delete().addOnSuccessListener {
-                                            appointments = appointments.filterNot { it.id == appointment.id }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        IconButton(onClick = {
+                                            selectedAppointment = appointment
+                                            showEditDialog = true
+                                        }) {
+                                            Icon(Icons.Default.Edit, contentDescription = "Edit")
                                         }
-                                    }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                        IconButton(onClick = {
+                                            db.collection("appointments").document(appointment.id).delete().addOnSuccessListener {
+                                                appointments = appointments.filterNot { it.id == appointment.id }
+                                            }
+                                        }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                        }
                                     }
                                 }
                             }
@@ -174,7 +196,7 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
     if (showAddDialog) {
         AppointmentDialog(
             onDismiss = { showAddDialog = false },
-            onSave = { type, customType, notes, date ->
+            onSave = { type, customType, notes, date, endDate ->
                 val finalType = if (type == "Other") customType else type
                 db.collection("appointments")
                     .add(
@@ -183,6 +205,7 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
                             "userId" to userId,
                             "type" to finalType,
                             "date" to Timestamp(date),
+                            "endDate" to endDate?.let { Timestamp(it) },
                             "notes" to notes
                         )
                     )
@@ -197,22 +220,24 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
     if (showEditDialog && selectedAppointment != null) {
         val appointment = selectedAppointment!!
         AppointmentDialog(
-            initialType = if (appointment.type in options) appointment.type else "Other",
-            initialCustomType = if (appointment.type !in options) appointment.type else "",
+            initialType = appointment.type,
+            initialCustomType = if (appointment.type !in listOf("Vaccination", "Check-up", "Grooming", "Training", "Medication")) appointment.type else "",
             initialNotes = appointment.notes,
             initialDate = appointment.date.toDate(),
+            initialEndDate = appointment.endDate?.toDate(),
             onDismiss = {
                 showEditDialog = false
                 selectedAppointment = null
             },
-            onSave = { type, customType, notes, date ->
+            onSave = { type, customType, notes, date, endDate ->
                 val finalType = if (type == "Other") customType else type
                 db.collection("appointments").document(appointment.id)
                     .update(
                         mapOf(
                             "type" to finalType,
                             "notes" to notes,
-                            "date" to Timestamp(date)
+                            "date" to Timestamp(date),
+                            "endDate" to endDate?.let { Timestamp(it) }
                         )
                     )
                     .addOnSuccessListener {
@@ -230,31 +255,47 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
 @Composable
 fun AppointmentDialog(
     onDismiss: () -> Unit,
-    onSave: (String, String, String, Date) -> Unit,
+    onSave: (String, String, String, Date, Date?) -> Unit,
     initialType: String = "Vaccination",
     initialCustomType: String = "",
     initialNotes: String = "",
-    initialDate: Date? = null
+    initialDate: Date? = null,
+    initialEndDate: Date? = null
 ) {
     val context = LocalContext.current
+    val now = remember { Calendar.getInstance() }
     val calendar = remember { Calendar.getInstance() }
     val dateFormatter = remember { SimpleDateFormat("dd.MM.yyyy. HH:mm", Locale.getDefault()) }
-    val typeOptions = listOf("Vaccination", "Check-up", "Grooming", "Training", "Other", )
+    val typeOptions = listOf("Vaccination", "Check-up", "Grooming", "Training", "Medication", "Other")
 
     var type by remember { mutableStateOf(initialType) }
     var customType by remember { mutableStateOf(initialCustomType) }
     var notes by remember { mutableStateOf(initialNotes) }
     var selectedDate by remember { mutableStateOf(initialDate) }
+    var endDate by remember { mutableStateOf(initialEndDate) }
     var typeExpanded by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
+    fun isValidDates(): Boolean {
+        return selectedDate != null && selectedDate!!.after(now.time)
+    }
+
+    val isSaveEnabled = isValidDates()
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = {
-                if (selectedDate != null) {
-                    onSave(type, customType, notes, selectedDate!!)
-                }
-            }) {
+            TextButton(
+                onClick = {
+                    if (!isValidDates()) {
+                        errorMessage = if (type == "Medication") "Start date cannot be in the past." else "Date cannot be in the past."
+                        return@TextButton
+                    }
+                    errorMessage = ""
+                    onSave(type, customType, notes, selectedDate!!, endDate)
+                },
+                enabled = isSaveEnabled
+            ) {
                 Text("Save")
             }
         },
@@ -316,37 +357,132 @@ fun AppointmentDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Button(onClick = {
-                    DatePickerDialog(
-                        context,
-                        { _, year, month, day ->
-                            calendar.set(Calendar.YEAR, year)
-                            calendar.set(Calendar.MONTH, month)
-                            calendar.set(Calendar.DAY_OF_MONTH, day)
-                            TimePickerDialog(
-                                context,
-                                { _, hour, minute ->
-                                    calendar.set(Calendar.HOUR_OF_DAY, hour)
-                                    calendar.set(Calendar.MINUTE, minute)
-                                    selectedDate = calendar.time
-                                },
-                                calendar.get(Calendar.HOUR_OF_DAY),
-                                calendar.get(Calendar.MINUTE),
-                                true
-                            ).show()
-                        },
-                        calendar.get(Calendar.YEAR),
-                        calendar.get(Calendar.MONTH),
-                        calendar.get(Calendar.DAY_OF_MONTH)
-                    ).show()
-                }) {
-                    Text("Pick Date & Time")
+                if (type == "Medication") {
+                    Text("Start Date & Time")
+                    Button(onClick = {
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+                                calendar.set(Calendar.YEAR, year)
+                                calendar.set(Calendar.MONTH, month)
+                                calendar.set(Calendar.DAY_OF_MONTH, day)
+                                TimePickerDialog(
+                                    context,
+                                    { _, hour, minute ->
+                                        calendar.set(Calendar.HOUR_OF_DAY, hour)
+                                        calendar.set(Calendar.MINUTE, minute)
+                                        val pickedDate = calendar.time
+                                        if (pickedDate.after(now.time)) {
+                                            selectedDate = pickedDate
+                                            errorMessage = ""
+                                        } else {
+                                            errorMessage = "Start date cannot be in the past."
+                                        }
+                                    },
+                                    calendar.get(Calendar.HOUR_OF_DAY),
+                                    calendar.get(Calendar.MINUTE),
+                                    true
+                                ).show()
+                            },
+                            now.get(Calendar.YEAR),
+                            now.get(Calendar.MONTH),
+                            now.get(Calendar.DAY_OF_MONTH)
+                        ).show()
+                    }) {
+                        Text("Pick Start Date & Time")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    selectedDate?.let {
+                        Text("Start: ${dateFormatter.format(it)}")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text("End Date & Time")
+                    Button(onClick = {
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+                                calendar.set(Calendar.YEAR, year)
+                                calendar.set(Calendar.MONTH, month)
+                                calendar.set(Calendar.DAY_OF_MONTH, day)
+                                TimePickerDialog(
+                                    context,
+                                    { _, hour, minute ->
+                                        calendar.set(Calendar.HOUR_OF_DAY, hour)
+                                        calendar.set(Calendar.MINUTE, minute)
+                                        val pickedEnd = calendar.time
+                                        if (pickedEnd.after(now.time)) {
+                                            endDate = pickedEnd
+                                            errorMessage = ""
+                                        } else {
+                                            errorMessage = "End date cannot be in the past."
+                                        }
+                                    },
+                                    calendar.get(Calendar.HOUR_OF_DAY),
+                                    calendar.get(Calendar.MINUTE),
+                                    true
+                                ).show()
+                            },
+                            now.get(Calendar.YEAR),
+                            now.get(Calendar.MONTH),
+                            now.get(Calendar.DAY_OF_MONTH)
+                        ).show()
+                    }) {
+                        Text("Pick End Date & Time")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    endDate?.let {
+                        Text("End: ${dateFormatter.format(it)}")
+                    }
+                } else {
+                    Button(onClick = {
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+                                calendar.set(Calendar.YEAR, year)
+                                calendar.set(Calendar.MONTH, month)
+                                calendar.set(Calendar.DAY_OF_MONTH, day)
+                                TimePickerDialog(
+                                    context,
+                                    { _, hour, minute ->
+                                        calendar.set(Calendar.HOUR_OF_DAY, hour)
+                                        calendar.set(Calendar.MINUTE, minute)
+                                        val pickedDate = calendar.time
+                                        if (pickedDate.after(now.time)) {
+                                            selectedDate = pickedDate
+                                            errorMessage = ""
+                                        } else {
+                                            errorMessage = "Date cannot be in the past."
+                                        }
+                                    },
+                                    calendar.get(Calendar.HOUR_OF_DAY),
+                                    calendar.get(Calendar.MINUTE),
+                                    true
+                                ).show()
+                            },
+                            now.get(Calendar.YEAR),
+                            now.get(Calendar.MONTH),
+                            now.get(Calendar.DAY_OF_MONTH)
+                        ).show()
+                    }) {
+                        Text("Pick Date & Time")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    selectedDate?.let {
+                        Text("Selected: ${dateFormatter.format(it)}")
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                selectedDate?.let {
-                    Text("Selected: ${dateFormatter.format(it)}")
+                if (errorMessage.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -361,4 +497,3 @@ fun AppointmentDialog(
         }
     )
 }
-

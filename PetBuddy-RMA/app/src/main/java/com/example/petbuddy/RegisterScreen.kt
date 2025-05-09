@@ -1,6 +1,8 @@
 package com.example.petbuddy
 
+import android.graphics.Color
 import android.widget.Toast
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -25,8 +27,12 @@ fun RegisterScreen(
     val context = LocalContext.current
     val auth = FirebaseAuth.getInstance()
 
+    val isDarkTheme = isSystemInDarkTheme()
+    val textColor = if (isDarkTheme) Color.White else Color.Black
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -48,9 +54,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        var password by remember { mutableStateOf("") }
-        var passwordVisible by remember { mutableStateOf(false) }
-
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
@@ -58,18 +61,13 @@ fun RegisterScreen(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
-                val image = if (passwordVisible)
-                    Icons.Default.Visibility
-                else
-                    Icons.Default.VisibilityOff
-
+                val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(imageVector = image, contentDescription = if (passwordVisible) "Hide password" else "Show password")
                 }
             },
             modifier = Modifier.fillMaxWidth()
         )
-
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -79,7 +77,7 @@ fun RegisterScreen(
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
                             Toast.makeText(context, "Registration Successful", Toast.LENGTH_SHORT).show()
-                            onRegistrationSuccess()
+                            onRegistrationSuccess() // sada vodi direktno na Home
                         } else {
                             Toast.makeText(context, "Registration failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                         }

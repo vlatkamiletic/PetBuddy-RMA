@@ -1,8 +1,11 @@
 package com.example.petbuddy
 
+
+import androidx.compose.ui.graphics.Color
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,8 +29,13 @@ fun HomeScreen(
     navController: NavController,
     onLogout: () -> Unit
 ) {
+
     val db = FirebaseFirestore.getInstance()
     val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+    val isDarkTheme = isSystemInDarkTheme()
+    val textColor = if (isDarkTheme) Color.White else Color.DarkGray
+
     var pets by remember { mutableStateOf(listOf<Pet>()) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -71,8 +79,11 @@ fun HomeScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Your Pets", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Your Pets",
+            style = MaterialTheme.typography.headlineMedium,
+            color = textColor
+        )
 
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(pets) { pet ->

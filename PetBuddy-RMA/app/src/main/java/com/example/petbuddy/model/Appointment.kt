@@ -8,5 +8,10 @@ data class Appointment(
     val userId: String = "",
     val type: String = "",
     val date: Timestamp = Timestamp.now(),
-    val notes: String = ""
+    val notes: String = "",
+
+    // Novo za ponavljajuće termine
+    val isRecurring: Boolean = false,           // Označava ponavljanje
+    val recurrenceType: String = "",            // Npr. "daily"
+    val endDate: Timestamp? = null              // Do kada se ponavlja
 )
