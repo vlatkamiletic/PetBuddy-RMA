@@ -80,7 +80,7 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Your Pets",
+            text = "Your pets",
             style = MaterialTheme.typography.headlineMedium,
             color = textColor
         )
@@ -104,7 +104,7 @@ fun HomeScreen(
                         if (pet.imageUrl.isNotEmpty()) {
                             Image(
                                 painter = rememberAsyncImagePainter(pet.imageUrl),
-                                contentDescription = "Pet Image",
+                                contentDescription = "Pet image",
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(200.dp),
@@ -144,7 +144,7 @@ fun HomeScreen(
             onClick = { navController.navigate("add_pet") },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Add New Pet")
+            Text("Add new pet")
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -178,7 +178,7 @@ fun HomeScreen(
                     Text("Cancel")
                 }
             },
-            title = { Text("Delete Pet") },
+            title = { Text("Delete pet") },
             text = { Text("Are you sure you want to delete '${pet.name}'?") }
         )
     }
@@ -210,7 +210,7 @@ fun HomeScreen(
                     Text("Cancel")
                 }
             },
-            title = { Text("Edit Pet") },
+            title = { Text("Edit pet") },
             text = {
                 Column {
                     OutlinedTextField(

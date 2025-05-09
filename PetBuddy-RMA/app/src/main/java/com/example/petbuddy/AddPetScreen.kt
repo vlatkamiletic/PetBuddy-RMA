@@ -5,11 +5,13 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -26,6 +28,9 @@ fun AddPetScreen(
     val context = LocalContext.current
     val db = FirebaseFirestore.getInstance()
     val storageRef = FirebaseStorage.getInstance().reference
+
+    val isDarkTheme = isSystemInDarkTheme()
+    val textColor = if (isDarkTheme) Color.White else Color.DarkGray
 
     var name by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("") }
@@ -94,14 +99,18 @@ fun AddPetScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Add New Pet", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            text = "Add new pet",
+            style = MaterialTheme.typography.headlineMedium,
+            color = textColor
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Pet Name") },
+            label = { Text("Pet name") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -110,7 +119,7 @@ fun AddPetScreen(
         OutlinedTextField(
             value = type,
             onValueChange = { type = it },
-            label = { Text("Pet Type") },
+            label = { Text("Pet type") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -120,7 +129,7 @@ fun AddPetScreen(
             onClick = { imagePickerLauncher.launch("image/*") },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Choose Image")
+            Text("Choose image")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -128,11 +137,11 @@ fun AddPetScreen(
         selectedImageUri?.let { uri ->
             Image(
                 painter = rememberAsyncImagePainter(uri),
-                contentDescription = "Selected Image",
+                contentDescription = "Selected image",
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Fit
             )
         }
 
@@ -148,7 +157,7 @@ fun AddPetScreen(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Add Pet")
+            Text("Add pet")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -157,7 +166,7 @@ fun AddPetScreen(
             onClick = onCancel,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Cancel")
+            Text("Cancel", color = textColor)
         }
     }
 }
