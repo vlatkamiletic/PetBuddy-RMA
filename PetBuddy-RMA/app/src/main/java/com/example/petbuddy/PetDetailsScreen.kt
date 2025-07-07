@@ -103,6 +103,8 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
                 .padding(padding)
                 .padding(16.dp)
                 .fillMaxSize()
+
+
         ) {
             var expanded by remember { mutableStateOf(false) }
             Row(
