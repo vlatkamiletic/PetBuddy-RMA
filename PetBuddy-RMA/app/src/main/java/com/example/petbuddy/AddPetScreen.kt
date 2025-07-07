@@ -19,6 +19,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import java.util.*
+import com.example.petbuddy.utils.showNotification
 
 @Composable
 fun AddPetScreen(
@@ -68,6 +69,7 @@ fun AddPetScreen(
                                 Toast.makeText(context, "Pet added successfully!", Toast.LENGTH_SHORT).show()
                                 isUploading = false
                                 onPetAdded()
+                                showNotification(context, "PetBuddy", "Added new pet: $name")
                             }
                             .addOnFailureListener { e ->
                                 Toast.makeText(context, "Failed to add pet: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -105,6 +107,7 @@ fun AddPetScreen(
             color = textColor
         )
 
+
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedTextField(
@@ -141,7 +144,7 @@ fun AddPetScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp),
-                contentScale = ContentScale.Fit
+                contentScale = ContentScale.Crop
             )
         }
 
@@ -166,7 +169,7 @@ fun AddPetScreen(
             onClick = onCancel,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Cancel", color = textColor)
+            Text("Cancel")
         }
     }
 }

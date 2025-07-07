@@ -35,12 +35,16 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
 
     var appointments by remember { mutableStateOf(listOf<Appointment>()) }
     var isLoading by remember { mutableStateOf(true) }
-    var sortOption by remember { mutableStateOf("Najranije prvo") }
+    var sortOption by remember { mutableStateOf("Earliest first") }
     var searchQuery by remember { mutableStateOf("") }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var selectedAppointment by remember { mutableStateOf<Appointment?>(null) }
+
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var appointmentToDelete by remember { mutableStateOf<Appointment?>(null) }
+
 
     fun loadAppointments() {
         isLoading = true
@@ -60,7 +64,7 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
                         notes = doc.getString("notes") ?: ""
                     )
                 }.let { list ->
-                    if (sortOption == "Najranije prvo") list.sortedBy { it.date.toDate() }
+                    if (sortOption == "Earliest first") list.sortedBy { it.date.toDate() }
                     else list.sortedByDescending { it.date.toDate() }
                 }
                 isLoading = false
@@ -112,12 +116,12 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
                         Text(sortOption)
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        DropdownMenuItem(text = { Text("Najranije prvo") }, onClick = {
-                            sortOption = "Najranije prvo"
+                        DropdownMenuItem(text = { Text("Earliest first") }, onClick = {
+                            sortOption = "Earliest first"
                             expanded = false
                         })
-                        DropdownMenuItem(text = { Text("Najkasnije prvo") }, onClick = {
-                            sortOption = "Najkasnije prvo"
+                        DropdownMenuItem(text = { Text("Latest first") }, onClick = {
+                            sortOption = "Latest first"
                             expanded = false
                         })
                     }
@@ -127,7 +131,7 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                label = { Text("Pretraži termine") },
+                label = { Text("Search appointments") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
@@ -177,9 +181,8 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
                                             Icon(Icons.Default.Edit, contentDescription = "Edit")
                                         }
                                         IconButton(onClick = {
-                                            db.collection("appointments").document(appointment.id).delete().addOnSuccessListener {
-                                                appointments = appointments.filterNot { it.id == appointment.id }
-                                            }
+                                            appointmentToDelete = appointment
+                                            showDeleteConfirmation = true
                                         }) {
                                             Icon(Icons.Default.Delete, contentDescription = "Delete")
                                         }
@@ -246,6 +249,44 @@ fun PetDetailsScreen(navController: NavController, petId: String, petName: Strin
                         loadAppointments()
                     }
             }
+        )
+    }
+
+    // Alert za brisanje termina
+    if (showDeleteConfirmation && appointmentToDelete != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteConfirmation = false
+                appointmentToDelete = null
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    db.collection("appointments").document(appointmentToDelete!!.id)
+                        .delete()
+                        .addOnSuccessListener {
+                            appointments = appointments.filterNot { it.id == appointmentToDelete!!.id }
+                            showDeleteConfirmation = false
+                            appointmentToDelete = null
+                        }
+                        .addOnFailureListener {
+                            Log.e("PetDetailsScreen", "Failed to delete appointment", it)
+                            showDeleteConfirmation = false
+                            appointmentToDelete = null
+                        }
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmation = false
+                    appointmentToDelete = null
+                }) {
+                    Text("Cancel")
+                }
+            },
+            title = { Text("Delete Appointment") },
+            text = { Text("Are you sure you want to delete the appointment '${appointmentToDelete!!.type}'?") }
         )
     }
 }
